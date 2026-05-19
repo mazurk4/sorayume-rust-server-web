@@ -459,7 +459,7 @@ function NewsSlide({ lang }) {
           ))}
           {hasMore && (
             <div className="news-more">
-              <a href="#news/page/2">
+              <a href="#news/page/1">
                 {lang==='jp' ? '過去のおしらせを見る →' : 'View past news →'}
               </a>
             </div>
@@ -506,7 +506,8 @@ function NewsDetailView({ lang, id, onBack }) {
 }
 
 function NewsArchiveView({ lang, page, onBack }) {
-  const all = sortedNews();
+  // Archive = back issues, i.e. older entries not shown on the news slide
+  const all = sortedNews().slice(NEWS_LATEST);
   const totalPages = Math.max(1, Math.ceil(all.length / NEWS_PER_PAGE));
   const safePage = Math.min(Math.max(1, page), totalPages);
   const start = (safePage - 1) * NEWS_PER_PAGE;
