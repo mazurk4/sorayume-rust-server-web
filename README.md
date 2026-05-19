@@ -18,7 +18,7 @@ vanilla / Solo・Duo・Trio / weekly wipe のサーバー情報・ルール・FA
 ビルド手順なし。任意の静的ファイルサーバーで配信する。
 
 ```sh
-python3 -m http.server 8080
+python3 -m http.server 8080 -d contents
 # http://localhost:8080 を開く
 ```
 
@@ -28,16 +28,18 @@ python3 -m http.server 8080
 
 | ファイル | 内容 |
 |---|---|
-| `index.html` | HTML シェル。React / Babel / 各 JSX を `<script>` で読み込む |
-| `content.jsx` | 全テキスト・データを `CONTENT` 定数として保持（`window.CONTENT` に公開） |
-| `app.jsx` | React コンポーネント・ルート `App` |
-| `styles.css` | CSS 変数で light / dark を切り替え |
-| `assets/banner.png` | ヒーロー画像 |
-| `assets/icon.png` | favicon / ナビ・フッターのロゴ |
+| `contents/index.html` | HTML シェル。React / Babel / 各 JSX を `<script>` で読み込む |
+| `contents/content.jsx` | 全テキスト・データを `CONTENT` 定数として保持（`window.CONTENT` に公開） |
+| `contents/app.jsx` | React コンポーネント・ルート `App` |
+| `contents/styles.css` | CSS 変数で light / dark を切り替え |
+| `contents/assets/banner.png` | ライトテーマ用ヒーロー画像 |
+| `contents/assets/banner-dark.png` | ダークテーマ用ヒーロー画像 |
+| `contents/assets/icon.png` | favicon / ナビ・フッターのロゴ |
+| `README.md` / `CLAUDE.md` | リポジトリ用ドキュメント。Cloudflare Pages では配信しない |
 
 ## コンテンツの編集
 
-サイト上のテキスト・ルール・FAQ などはすべて [`content.jsx`](content.jsx) の `CONTENT` オブジェクトに集約されている。
+サイト上のテキスト・ルール・FAQ などはすべて [`contents/content.jsx`](contents/content.jsx) の `CONTENT` オブジェクトに集約されている。
 
 `{ jp: "...", en: "..." }` 形式で書けば言語切り替えに自動追従する。
 
@@ -50,7 +52,7 @@ hero: {
 
 ## デプロイ (Cloudflare Pages)
 
-ビルドなしの静的サイトなので、リポジトリをそのまま公開できる。
+ビルドなしの静的サイト。Cloudflare Pages では `contents/` だけを公開ディレクトリにすることで、`README.md` や `CLAUDE.md` などのリポジトリ用ファイルを配信対象から外す。
 
 ### 初回セットアップ（ダッシュボード）
 
@@ -59,7 +61,7 @@ hero: {
 3. ビルド設定を以下のように指定:
    - **Framework preset**: `None`
    - **Build command**: 空欄
-   - **Build output directory**: `/`（リポジトリのルート）
+   - **Build output directory**: `contents`
    - **Root directory**: 空欄
 4. **Save and Deploy** で初回デプロイ
 5. 完了後、`*.pages.dev` のサブドメインが自動付与される
@@ -78,7 +80,7 @@ hero: {
 
 ### ローカル確認との差分
 
-Cloudflare Pages はルート直下の静的ファイルをそのまま配信するため、ローカルで `python3 -m http.server` 経由で見えているものがそのまま公開される。追加の設定ファイル（`_redirects` / `_headers` 等）は現状不要。
+Cloudflare Pages は `contents/` 配下だけを配信する。ローカルでも `python3 -m http.server 8080 -d contents` で同じ公開ルートを確認できる。追加の設定ファイル（`_redirects` / `_headers` 等）は現状不要。
 
 ## ライセンス / クレジット
 

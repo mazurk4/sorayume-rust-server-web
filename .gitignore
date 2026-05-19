@@ -1,6 +1,14 @@
 # Claude
 .claude/
 
+# Codex / local agents
+.codex/
+.agents/
+
+# Env / secrets
+.env
+.env.*
+
 # OS
 .DS_Store
 Thumbs.db

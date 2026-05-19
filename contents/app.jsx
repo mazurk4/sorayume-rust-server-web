@@ -261,11 +261,11 @@ function QuickInfo({ lang }) {
 }
 
 // ─── Slide contents ──────────────────────────────────────────────
-function HeroSlide({ lang, onNext }) {
+function HeroSlide({ lang, onNext, dark }) {
   return (
     <section className="slide hero-slide" id="hero" data-screen-label="01 Hero">
       <div className="hero-frame">
-        <img src="assets/banner.png" alt="SORAYU.ME Rust Server" />
+        <img src={dark ? 'assets/banner-dark.png' : 'assets/banner.png'} alt="SORAYU.ME Rust Server" />
         <div className="hero-overlay">
           <span className="hero-tag">
             <span className="dot"></span>
@@ -837,7 +837,7 @@ function App() {
       {isDeck ? (
         <div className="deck" ref={deckRef}>
           {SLIDES.map((s, i) => (
-            <s.Comp key={s.id} lang={lang} onNext={() => goTo(i+1)} onOpenTerms={() => setTermsOpen(true)} />
+            <s.Comp key={s.id} lang={lang} dark={dark} onNext={() => goTo(i+1)} onOpenTerms={() => setTermsOpen(true)} />
           ))}
         </div>
       ) : view.kind === 'news-detail' ? (
