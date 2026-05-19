@@ -225,19 +225,60 @@ const CONTENT = {
   },
   news: [
     {
+      id:   '2026-05-20-wipe',
       date: '2026-05-20',
       title: { jp:'次回ワイプ実施予定', en:'Next wipe scheduled' },
       body:  { jp:'5月20日 18:00 JST に Map / BP ワイプを実施します。', en:'Map / BP wipe at May 20 18:00 JST.' },
+      content: {
+        jp: [
+          '5月20日（水）18:00 JST に Map / BP ワイプを実施します。',
+          '当日 17:50 頃にアナウンスを行い、再起動後にシード変更とサイズ調整が反映されます。',
+          'Map サイズは 3500、シードはランダム生成。BP は全リセットです。',
+          '進行中の建築物・アイテムは全て初期化されますのでご注意ください。',
+        ],
+        en: [
+          'Map / BP wipe is scheduled for May 20 (Wed) 18:00 JST.',
+          'An in-game announcement will be sent around 17:50, then the server will restart with a new seed and size.',
+          'Map size will be 3500 with a random seed. Blueprints will be fully reset.',
+          'All in-progress structures and items will be cleared.',
+        ],
+      },
     },
     {
+      id:   '2026-05-12-cave-bunker',
       date: '2026-05-12',
       title: { jp:'洞窟バンカー生成を調整', en:'Cave bunker spawns tuned' },
       body:  { jp:'チームキャップ環境で強すぎるとの意見を受け、洞窟の生成を調整しました。', en:'Following feedback that bunkers were too strong with the team cap, cave generation has been retuned.' },
+      content: {
+        jp: [
+          'チームキャップ環境（Solo/Duo/Trio）において、洞窟バンカーが他のグループに対して過剰に有利になっているという意見を多数いただきました。',
+          '本アップデートで、洞窟内部の生成オブジェクト密度・入口配置・採取量を調整しました。',
+          '今後もバランス調整を継続していきますので、Discord 上でフィードバックをお願いします。',
+        ],
+        en: [
+          'On a team-capped server (Solo/Duo/Trio), cave bunkers were reportedly giving an oversized edge over other groups.',
+          'This update retunes spawn density inside caves, entrance placement, and resource yield.',
+          'We will keep iterating on balance. Please share feedback on Discord.',
+        ],
+      },
     },
     {
+      id:   '2026-04-30-outpost-merge',
       date: '2026-04-30',
       title: { jp:'Bandit Camp を Outpost に統合', en:'Bandit Camp merged into Outpost' },
       body:  { jp:'モニュメントを統合し、移動コストを下げました。', en:'The two monuments are now merged to reduce travel cost.' },
+      content: {
+        jp: [
+          'Bandit Camp と Outpost のモニュメントを 1 つに統合しました。',
+          'ギャンブル・換金・ベンダーなど主要機能はすべて統合先のモニュメントに集約されています。',
+          'マップが狭いサーバーでは移動コストが大きな要素でしたので、今後はトレードと買い物が同じ場所で完結できます。',
+        ],
+        en: [
+          'The two monuments Bandit Camp and Outpost have been merged into one.',
+          'All major functions — gambling, currency exchange, vendors — are now consolidated at the merged monument.',
+          'Travel cost was a noticeable factor on smaller maps; trading and shopping now share one location.',
+        ],
+      },
     },
   ],
 };

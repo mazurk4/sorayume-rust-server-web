@@ -390,21 +390,136 @@ function StreamSlide({ lang }) {
   );
 }
 
+const NEWS_LATEST = 5;
+const NEWS_PER_PAGE = 10;
+
+function sortedNews() {
+  return [...CONTENT.news].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+}
+
 function NewsSlide({ lang }) {
+  const all = sortedNews();
+  const latest = all.slice(0, NEWS_LATEST);
+  const hasMore = all.length > NEWS_LATEST;
   return (
     <section className="slide" id="news" data-screen-label="08 News">
       <div className="slide-inner">
         <SlideHead num="06 — News" title={lang==='jp'?'おしらせ':'News'} sub="Updates" />
         <div className="card">
-          {CONTENT.news.map((n, i) => (
-            <div className="news-item" key={i}>
+          {latest.map((n) => (
+            <a
+              key={n.id || n.date}
+              className="news-item news-link"
+              href={`#news/${n.id || n.date}`}
+            >
               <div className="news-date">{n.date}</div>
               <div className="news-body">
                 <div className="nt">{pick(n.title, lang)}</div>
                 <div className="nd">{pick(n.body, lang)}</div>
               </div>
-            </div>
+              <div className="news-chev" aria-hidden="true">›</div>
+            </a>
           ))}
+          {hasMore && (
+            <div className="news-more">
+              <a href="#news/page/2">
+                {lang==='jp' ? '過去のおしらせを見る →' : 'View past news →'}
+              </a>
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NewsDetailView({ lang, id, onBack }) {
+  const item = CONTENT.news.find(n => (n.id || n.date) === id);
+  if (!item) {
+    return (
+      <section className="news-page">
+        <div className="slide-inner">
+          <a className="news-back" href="#news" onClick={(e)=>{e.preventDefault(); onBack();}}>
+            ← {lang==='jp' ? 'おしらせ一覧へ' : 'Back to news'}
+          </a>
+          <div className="card">
+            <p>{lang==='jp' ? 'おしらせが見つかりません。' : 'News item not found.'}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+  const paragraphs = (item.content && item.content[lang]) || [pick(item.body, lang)];
+  return (
+    <section className="news-page">
+      <div className="slide-inner">
+        <a className="news-back" href="#news" onClick={(e)=>{e.preventDefault(); onBack();}}>
+          ← {lang==='jp' ? 'おしらせ一覧へ' : 'Back to news'}
+        </a>
+        <article className="card news-article">
+          <div className="news-article-meta">{item.date}</div>
+          <h1 className="news-article-title">{pick(item.title, lang)}</h1>
+          <div className="news-article-body">
+            {paragraphs.map((p, i) => <p key={i}>{p}</p>)}
+          </div>
+        </article>
+      </div>
+    </section>
+  );
+}
+
+function NewsArchiveView({ lang, page, onBack }) {
+  const all = sortedNews();
+  const totalPages = Math.max(1, Math.ceil(all.length / NEWS_PER_PAGE));
+  const safePage = Math.min(Math.max(1, page), totalPages);
+  const start = (safePage - 1) * NEWS_PER_PAGE;
+  const items = all.slice(start, start + NEWS_PER_PAGE);
+  return (
+    <section className="news-page">
+      <div className="slide-inner">
+        <a className="news-back" href="#news" onClick={(e)=>{e.preventDefault(); onBack();}}>
+          ← {lang==='jp' ? 'おしらせ一覧へ' : 'Back to news'}
+        </a>
+        <div className="news-archive-head">
+          <h1 className="news-article-title">{lang==='jp' ? 'おしらせバックナンバー' : 'News archive'}</h1>
+          <div className="news-article-meta">
+            {lang==='jp' ? `${safePage} / ${totalPages} ページ` : `Page ${safePage} / ${totalPages}`}
+          </div>
+        </div>
+        <div className="card">
+          {items.length === 0 ? (
+            <p>{lang==='jp' ? 'このページにおしらせはありません。' : 'No items on this page.'}</p>
+          ) : items.map((n) => (
+            <a
+              key={n.id || n.date}
+              className="news-item news-link"
+              href={`#news/${n.id || n.date}`}
+            >
+              <div className="news-date">{n.date}</div>
+              <div className="news-body">
+                <div className="nt">{pick(n.title, lang)}</div>
+                <div className="nd">{pick(n.body, lang)}</div>
+              </div>
+              <div className="news-chev" aria-hidden="true">›</div>
+            </a>
+          ))}
+        </div>
+        <div className="news-pager">
+          <a
+            className={`news-pager-btn ${safePage <= 1 ? 'disabled' : ''}`}
+            href={safePage > 1 ? `#news/page/${safePage - 1}` : '#news'}
+            aria-disabled={safePage <= 1}
+          >
+            ← {lang==='jp' ? '前へ' : 'Prev'}
+          </a>
+          <span className="news-pager-info">{safePage} / {totalPages}</span>
+          <a
+            className={`news-pager-btn ${safePage >= totalPages ? 'disabled' : ''}`}
+            href={safePage < totalPages ? `#news/page/${safePage + 1}` : `#news/page/${safePage}`}
+            aria-disabled={safePage >= totalPages}
+          >
+            {lang==='jp' ? '次へ' : 'Next'} →
+          </a>
         </div>
       </div>
     </section>
@@ -449,105 +564,233 @@ const SLIDES = [
   { id:'outro',   navKey:null,       Comp:OutroSlide,     lab:{jp:'End', en:'End'} },
 ];
 
+// Parse hash → view descriptor
+function parseHash(raw) {
+  const h = (raw || '').replace(/^#/, '');
+  if (!h) return { kind:'deck', slideId:null };
+  if (h.startsWith('news/')) {
+    const rest = h.slice(5);
+    if (rest.startsWith('page/')) {
+      const n = parseInt(rest.slice(5), 10);
+      return { kind:'news-archive', page: Number.isFinite(n) && n >= 1 ? n : 1 };
+    }
+    if (rest === 'archive') return { kind:'news-archive', page:1 };
+    if (rest.length > 0)    return { kind:'news-detail', id:rest };
+  }
+  return { kind:'deck', slideId:h };
+}
+
 function App() {
   const [dark, setDark] = useLocalState('sorayu-dark', true);
   const [lang, setLang] = useLocalState('sorayu-lang', 'jp');
   const [slideIdx, setSlideIdx] = useState(0);
+  const [view, setView] = useState(() => parseHash(window.location.hash));
   const deckRef = useRef(null);
+  const slideIdxRef = useRef(0);
+  const snapTimerRef = useRef(0);
+  const programmaticScrollUntilRef = useRef(0);
 
+  useEffect(() => { slideIdxRef.current = slideIdx; }, [slideIdx]);
   useEffect(() => { document.documentElement.classList.toggle('dark', dark); }, [dark]);
 
   const onToggleDark = () => setDark(!dark);
   const onSetLang = (l) => setLang(l);
 
-  // Scroll handling — document scroll
+  // Hash → view sync
   useEffect(() => {
-    let raf = 0;
-    const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const slides = document.querySelectorAll('.slide');
-        const probe = window.scrollY + 16;
-        let best = 0;
-        for (let i = 0; i < slides.length; i++) {
-          if (slides[i].offsetTop <= probe) best = i;
-        }
-        setSlideIdx(best);
-      });
-    };
-    window.addEventListener('scroll', onScroll, { passive:true });
-    return () => window.removeEventListener('scroll', onScroll);
+    const onHashChange = () => setView(parseHash(window.location.hash));
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
+  // When switching views (deck ↔ news-page), reset scroll appropriately.
+  // Use instant scroll (overriding CSS scroll-behavior) so the view jump doesn't animate
+  // and race with the detection logic.
+  useEffect(() => {
+    const jump = (top) => {
+      programmaticScrollUntilRef.current = Date.now() + 500;
+      const html = document.documentElement;
+      const prev = html.style.scrollBehavior;
+      html.style.scrollBehavior = 'auto';
+      window.scrollTo(0, top);
+      // restore on next frame
+      requestAnimationFrame(() => { html.style.scrollBehavior = prev; });
+    };
+
+    if (view.kind === 'deck') {
+      if (view.slideId) {
+        const idx = SLIDES.findIndex(s => s.id === view.slideId);
+        if (idx >= 0) {
+          const el = document.querySelectorAll('.slide')[idx];
+          if (el) jump(el.offsetTop);
+          setSlideIdx(idx);
+        }
+      }
+    } else {
+      jump(0);
+    }
+  }, [view.kind, view.slideId, view.id, view.page]);
+
+  // Detect which slide occupies the viewport center; also sync hash
+  // (only when scroll has actually settled on the slide top, to avoid mount-time flicker)
+  useEffect(() => {
+    if (view.kind !== 'deck') return;
+    let raf = 0;
+    const recompute = () => {
+      const slides = document.querySelectorAll('.slide');
+      if (!slides.length) return;
+      const probe = window.scrollY + window.innerHeight / 2;
+      let best = 0;
+      for (let i = 0; i < slides.length; i++) {
+        if (slides[i].offsetTop <= probe) best = i;
+      }
+      setSlideIdx(best);
+
+      // Keep URL in sync with whichever slide is currently in view.
+      const id = SLIDES[best]?.id;
+      if (id && parseHash(window.location.hash).slideId !== id) {
+        history.replaceState(null, '', `#${id}`);
+      }
+    };
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(recompute);
+    };
+    recompute();
+    window.addEventListener('scroll', onScroll, { passive:true });
+    window.addEventListener('resize', recompute);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', recompute);
+    };
+  }, [view.kind]);
+
   const goTo = useCallback((i) => {
+    if (view.kind !== 'deck') {
+      // Switch back to deck first; hashchange handler will scroll
+      const id = SLIDES[Math.max(0, Math.min(SLIDES.length-1, i))]?.id;
+      if (id) window.location.hash = `#${id}`;
+      return;
+    }
     const slides = document.querySelectorAll('.slide');
     const clamped = Math.max(0, Math.min(slides.length-1, i));
     const target = slides[clamped];
     if (target) window.scrollTo({ top: target.offsetTop, behavior:'smooth' });
-  }, []);
+  }, [view.kind]);
 
-  // Keyboard nav
+  // Snap-on-stop: after the user stops scrolling, gently snap to the nearest
+  // slide IF the misalignment is small enough that it's clearly "the slide
+  // they're trying to read". Tall slides (taller than viewport) are left alone
+  // so the user can scroll through their content naturally.
   useEffect(() => {
+    if (view.kind !== 'deck') return;
+
+    const SNAP_DELAY = 220;        // ms after last scroll before snapping
+    const SNAP_SOFT_TOLERANCE = 0.55; // fraction of viewport: drift below this triggers a soft snap
+
+    const trySnap = () => {
+      if (Date.now() < programmaticScrollUntilRef.current) return;
+      const slides = document.querySelectorAll('.slide');
+      if (!slides.length) return;
+      const vh = window.innerHeight;
+      const sy = window.scrollY;
+
+      // pick the slide whose top is closest to current scrollY
+      let nearestIdx = 0;
+      let nearestDist = Infinity;
+      for (let i = 0; i < slides.length; i++) {
+        const d = Math.abs(slides[i].offsetTop - sy);
+        if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+      }
+      const target = slides[nearestIdx];
+      if (!target) return;
+
+      // If user is well within a tall slide, don't snap.
+      if (target.offsetHeight > vh + 4 && sy > target.offsetTop + 4 && sy + vh < target.offsetTop + target.offsetHeight - 4) {
+        return;
+      }
+      // Only snap if drift is modest (typical "stopped mid-section" case)
+      if (nearestDist <= vh * SNAP_SOFT_TOLERANCE && nearestDist > 2) {
+        window.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+      }
+    };
+
+    const onScroll = () => {
+      clearTimeout(snapTimerRef.current);
+      snapTimerRef.current = setTimeout(trySnap, SNAP_DELAY);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      clearTimeout(snapTimerRef.current);
+    };
+  }, [view.kind]);
+
+  // Keyboard nav (deck only)
+  useEffect(() => {
+    if (view.kind !== 'deck') return;
     const onKey = (e) => {
       if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
-      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); goTo(slideIdx+1); }
-      else if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); goTo(slideIdx-1); }
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); goTo(slideIdxRef.current+1); }
+      else if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); goTo(slideIdxRef.current-1); }
       else if (e.key === 'Home') { e.preventDefault(); goTo(0); }
       else if (e.key === 'End')  { e.preventDefault(); goTo(SLIDES.length-1); }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [slideIdx, goTo]);
+  }, [view.kind, goTo]);
 
-  // Hash sync
-  useEffect(() => {
-    const id = SLIDES[slideIdx]?.id;
-    if (id && window.location.hash.slice(1) !== id) {
-      history.replaceState(null, '', `#${id}`);
-    }
-  }, [slideIdx]);
-
-  // Initial hash → slide
-  useEffect(() => {
-    const h = window.location.hash.slice(1);
-    if (!h) return;
-    const idx = SLIDES.findIndex(s => s.id === h);
-    if (idx > 0) setTimeout(() => goTo(idx), 50);
-  }, [goTo]);
+  const goBackToNews = useCallback(() => {
+    window.location.hash = '#news';
+  }, []);
 
   const progress = SLIDES.length > 1 ? (slideIdx / (SLIDES.length-1)) * 100 : 0;
+  const isDeck = view.kind === 'deck';
 
   return (
     <>
       <Starfield />
       <Nav lang={lang} setLang={onSetLang} dark={dark} onToggleDark={onToggleDark} slideIdx={slideIdx} slides={SLIDES} goTo={goTo} />
-      <div className="deck-progress"><div className="bar" style={{width:`${progress}%`}}></div></div>
+      {isDeck && (
+        <div className="deck-progress"><div className="bar" style={{width:`${progress}%`}}></div></div>
+      )}
 
-      <div className="deck" ref={deckRef}>
-        {SLIDES.map((s, i) => (
-          <s.Comp key={s.id} lang={lang} onNext={() => goTo(i+1)} />
-        ))}
-      </div>
+      {isDeck ? (
+        <div className="deck" ref={deckRef}>
+          {SLIDES.map((s, i) => (
+            <s.Comp key={s.id} lang={lang} onNext={() => goTo(i+1)} />
+          ))}
+        </div>
+      ) : view.kind === 'news-detail' ? (
+        <NewsDetailView lang={lang} id={view.id} onBack={goBackToNews} />
+      ) : (
+        <NewsArchiveView lang={lang} page={view.page} onBack={goBackToNews} />
+      )}
 
-      {/* Right rail dots */}
-      <div className="deck-dots" aria-hidden="true">
-        {SLIDES.map((s, i) => (
-          <button key={s.id} className={`d ${slideIdx===i?'on':''}`} onClick={()=>goTo(i)} aria-label={pick(s.lab, lang)}>
-            <span className="lab">{pick(s.lab, lang)}</span>
-          </button>
-        ))}
-      </div>
+      {isDeck && (
+        <>
+          {/* Right rail dots */}
+          <div className="deck-dots" aria-hidden="true">
+            {SLIDES.map((s, i) => (
+              <button key={s.id} className={`d ${slideIdx===i?'on':''}`} onClick={()=>goTo(i)} aria-label={pick(s.lab, lang)}>
+                <span className="lab">{pick(s.lab, lang)}</span>
+              </button>
+            ))}
+          </div>
 
-      {/* Counter + arrows */}
-      <div className="deck-counter">
-        <b>{String(slideIdx+1).padStart(2,'0')}</b>
-        <span style={{margin:'0 6px',opacity:.4}}>/</span>
-        {String(SLIDES.length).padStart(2,'0')}
-      </div>
-      <div className="deck-arrows">
-        <button onClick={()=>goTo(slideIdx-1)} disabled={slideIdx===0} aria-label="prev">↑</button>
-        <button onClick={()=>goTo(slideIdx+1)} disabled={slideIdx===SLIDES.length-1} aria-label="next">↓</button>
-      </div>
+          {/* Counter + arrows */}
+          <div className="deck-counter">
+            <b>{String(slideIdx+1).padStart(2,'0')}</b>
+            <span style={{margin:'0 6px',opacity:.4}}>/</span>
+            {String(SLIDES.length).padStart(2,'0')}
+          </div>
+          <div className="deck-arrows">
+            <button onClick={()=>goTo(slideIdx-1)} disabled={slideIdx===0} aria-label="prev">↑</button>
+            <button onClick={()=>goTo(slideIdx+1)} disabled={slideIdx===SLIDES.length-1} aria-label="next">↓</button>
+          </div>
+        </>
+      )}
     </>
   );
 }

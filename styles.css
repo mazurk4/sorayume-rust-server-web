@@ -65,7 +65,7 @@ body{
   min-height:100vh;
   position:relative;
 }
-html{scroll-behavior:smooth;scroll-padding-top:60px;scroll-snap-type:y proximity;}
+html{scroll-behavior:smooth;scroll-padding-top:60px;}
 
 /* ─── Night sky atmosphere ─── */
 .sky{
@@ -171,7 +171,6 @@ button{font:inherit;color:inherit}
 
 .slide{
   min-height:100vh;
-  scroll-snap-align:start;
   display:flex;flex-direction:column;justify-content:center;
   padding:96px 24px 72px;
   position:relative;
@@ -390,14 +389,86 @@ button{font:inherit;color:inherit}
 
 .news-item{
   display:flex;gap:14px;padding:12px 0;border-bottom:1px dashed var(--line);
+  align-items:flex-start;
 }
 .news-item:last-child{border-bottom:0}
 .news-date{
   font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--brown);
   flex:none;width:96px;padding-top:2px;letter-spacing:.04em;
 }
+.news-body{flex:1 1 auto;min-width:0}
 .news-body .nt{font-weight:600;color:var(--ink);font-size:14px;margin-bottom:2px}
 .news-body .nd{font-size:12.5px;color:var(--ink-muted)}
+
+/* clickable news-item (list link) */
+.news-link{
+  text-decoration:none;color:inherit;
+  transition:background .15s ease;
+  border-radius:6px;
+  padding:12px 8px;margin:0 -8px;
+}
+.news-link:hover{background:color-mix(in oklab, var(--navy) 8%, transparent)}
+.news-chev{
+  flex:none;align-self:center;color:var(--brown);font-size:22px;line-height:1;
+  opacity:.5;transition:opacity .15s ease, transform .15s ease;
+}
+.news-link:hover .news-chev{opacity:1;transform:translateX(2px)}
+
+.news-more{
+  margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);
+  text-align:right;
+}
+.news-more a{
+  font-size:12.5px;color:var(--brown);font-weight:600;letter-spacing:.04em;
+  text-decoration:none;
+}
+.news-more a:hover{color:var(--gold)}
+
+/* News detail / archive pages (non-slide layout) */
+.news-page{
+  min-height:100vh;
+  padding:96px 24px 72px;
+  position:relative;z-index:1;
+}
+.news-page .slide-inner{max-width:760px}
+.news-back{
+  display:inline-block;font-size:12.5px;color:var(--brown);
+  text-decoration:none;letter-spacing:.04em;margin-bottom:18px;
+  padding:6px 10px;border-radius:6px;
+  transition:background .15s ease, color .15s ease;
+}
+.news-back:hover{background:color-mix(in oklab, var(--navy) 10%, transparent);color:var(--gold)}
+
+.news-article-meta{
+  font-family:"JetBrains Mono",monospace;font-size:12px;color:var(--brown);
+  letter-spacing:.06em;margin-bottom:6px;
+}
+.news-article-title{
+  font-family:"Cinzel",serif;font-weight:700;color:var(--navy);
+  font-size:26px;letter-spacing:.02em;margin:0 0 18px;
+}
+.news-article-body p{margin:0 0 12px;color:var(--ink-soft);font-size:14.5px;line-height:1.85}
+.news-article-body p:last-child{margin-bottom:0}
+
+.news-archive-head{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  margin-bottom:14px;flex-wrap:wrap;
+}
+.news-archive-head .news-article-title{margin:0}
+
+.news-pager{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  margin-top:18px;
+}
+.news-pager-btn{
+  font-size:12.5px;color:var(--ink);text-decoration:none;
+  padding:8px 14px;border:1px solid var(--line);border-radius:8px;
+  background:var(--card);
+  transition:background .15s ease, border-color .15s ease;
+}
+.news-pager-btn:hover{background:var(--card-2);border-color:var(--line-strong)}
+.news-pager-btn.disabled{opacity:.35;pointer-events:none}
+.news-pager-info{font-size:12px;color:var(--ink-muted);font-family:"JetBrains Mono",monospace}
 
 .callout{
   margin-top:16px;padding:13px 16px;border-radius:10px;
