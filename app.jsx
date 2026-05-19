@@ -59,6 +59,35 @@ function Starfield(){
   );
 }
 
+// ─── Wipe schedule loader (assets/wipes.txt; JST entries) ────────
+// Format: YYYY-MMDD-HH:MM, one per line. Lines starting with '#' and blank lines are ignored.
+function parseWipeLine(line) {
+  const m = line.trim().match(/^(\d{4})-(\d{2})(\d{2})-(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const [, y, mo, d, h, mi] = m;
+  // JST = UTC+9 → convert to UTC by subtracting 9 hours
+  return new Date(Date.UTC(+y, +mo - 1, +d, +h - 9, +mi, 0));
+}
+function useWipeSchedule() {
+  const [schedule, setSchedule] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('assets/wipes.txt?_=' + Date.now())
+      .then(r => r.ok ? r.text() : '')
+      .then(text => {
+        if (cancelled) return;
+        const dates = text.split('\n')
+          .map(parseWipeLine)
+          .filter(Boolean)
+          .sort((a, b) => a - b);
+        setSchedule(dates);
+      })
+      .catch(() => { if (!cancelled) setSchedule([]); });
+    return () => { cancelled = true; };
+  }, []);
+  return schedule;
+}
+
 // ─── Wipe countdown ──────────────────────────────────────────────
 function useNextWipe() {
   const [now, setNow] = useState(() => new Date());
@@ -66,8 +95,15 @@ function useNextWipe() {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+  const schedule = useWipeSchedule();
 
   const next = useMemo(() => {
+    // Prefer the next future entry from wipes.txt
+    if (schedule && schedule.length > 0) {
+      const future = schedule.find(d => d > now);
+      if (future) return future;
+    }
+    // Fallback: next Wednesday 12:00 JST (= 03:00 UTC)
     const d = new Date();
     const utcDay = d.getUTCDay();
     const utcHr  = d.getUTCHours();
@@ -76,14 +112,14 @@ function useNextWipe() {
     const isPastToday = utcHr > 3 || (utcHr === 3 && utcMin >= 0);
     if (daysAhead === 0 && isPastToday) daysAhead = 7;
     return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + daysAhead, 3, 0, 0));
-  }, [Math.floor(now.getTime()/60000)]);
+  }, [Math.floor(now.getTime()/60000), schedule]);
 
   const diff = Math.max(0, next - now);
   const days = Math.floor(diff / 86400000);
   const hrs  = Math.floor((diff % 86400000) / 3600000);
   const mins = Math.floor((diff % 3600000) / 60000);
   const secs = Math.floor((diff % 60000) / 1000);
-  return { days, hrs, mins, secs };
+  return { days, hrs, mins, secs, target: next };
 }
 
 function pick(v, lang){
@@ -171,9 +207,18 @@ function CopyButton({ text, lang }) {
   );
 }
 
+function formatJST(d) {
+  if (!(d instanceof Date)) return '';
+  // Render as YYYY-MM-DD HH:mm JST regardless of viewer's timezone
+  const jst = new Date(d.getTime() + 9 * 3600000);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${jst.getUTCFullYear()}-${pad(jst.getUTCMonth()+1)}-${pad(jst.getUTCDate())} ${pad(jst.getUTCHours())}:${pad(jst.getUTCMinutes())} JST`;
+}
+
 function QuickInfo({ lang }) {
-  const { days, hrs, mins, secs } = useNextWipe();
+  const { days, hrs, mins, secs, target } = useNextWipe();
   const connect = 'client.connect rust-game.sorayu.me:28015';
+  const steamJoin = 'steam://run/252490//+connect rust-game.sorayu.me:28015';
   return (
     <div className="quick">
       <div className="qcard">
@@ -182,8 +227,14 @@ function QuickInfo({ lang }) {
           <code>{connect}</code>
           <CopyButton text={connect} lang={lang} />
         </div>
-        <div style={{fontSize:11.5, color:'var(--ink-muted)'}}>
-          {lang==='jp' ? 'F1 コンソールに貼り付けてください' : 'Paste this into the F1 console'}
+        <a className="steam-join" href={steamJoin}>
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{width:14,height:14}}>
+            <path d="M12 2C6.5 2 2 6.5 2 12c0 4.5 3 8.3 7.1 9.6l-1.3-2.6c-.4.1-.9.2-1.3.2-1.8 0-3.3-1.5-3.3-3.3 0-.4.1-.8.2-1.2L7 17l.6 1.3c.2.4.6.7 1 .8.4.1.9 0 1.2-.2 1.6-.8 2.2-2.8 1.4-4.4l-.6-1.2 4.3-3c.1 0 .2.1.3.1 2 0 3.6-1.6 3.6-3.6S17.2 3.2 15.2 3.2c-2 0-3.6 1.6-3.6 3.6v.1l-3 4.3c-1-.5-2.1-.4-3 .1l-3.4-1.7c.6-3.7 3.7-6.5 7.4-7 .3-.1.7-.1 1-.1 4.4 0 8 3.6 8 8s-3.6 8-8 8c-.3 0-.7 0-1-.1L8 22c1.3.3 2.6.5 4 .5 5.5 0 10-4.5 10-10S17.5 2 12 2z"/>
+          </svg>
+          {lang==='jp' ? 'ゲームに参加' : 'Join game'}
+        </a>
+        <div className="connect-hint">
+          {lang==='jp' ? 'ボタンで Steam が起動。コマンドは F1 コンソールでも使用可' : 'Click to launch via Steam. Or paste the command into the F1 console.'}
         </div>
       </div>
       <div className="qcard">
@@ -194,7 +245,7 @@ function QuickInfo({ lang }) {
           <span className="num" style={{marginLeft:6}}>{String(mins).padStart(2,'0')}</span><span className="lbl">{lang==='jp'?'分':'m'}</span>
           <span className="num" style={{marginLeft:6,fontSize:18,opacity:.7}}>{String(secs).padStart(2,'0')}</span>
         </div>
-        <div className="countdown-when">{pick(CONTENT.quick.wipeNote, lang)}</div>
+        <div className="countdown-when">{target ? formatJST(target) : pick(CONTENT.quick.wipeNote, lang)}</div>
       </div>
       <div className="qcard">
         <div className="qlabel">{pick(CONTENT.quick.discord, lang)}</div>
@@ -232,23 +283,9 @@ function HeroSlide({ lang, onNext }) {
   );
 }
 
-function WelcomeSlide({ lang }) {
-  const c = CONTENT.welcome;
-  return (
-    <section className="slide" id="welcome" data-screen-label="02 Welcome">
-      <div className="slide-inner">
-        <SlideHead num="00 — Welcome" title={lang==='jp'?'はじめに':'Introduction'} sub={lang==='jp'?'ようこそ':'Welcome'} />
-        <div className="card">
-          <h3><span className="pip"></span>{pick(c.title, lang)}</h3>
-          {c.body[lang].map((p,i) => <p key={i}>{p}</p>)}
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function ServerInfoSlide({ lang }) {
   const c = CONTENT.settings;
+  const w = CONTENT.welcome;
   return (
     <section className="slide" id="info" data-screen-label="03 Server info">
       <div className="slide-inner">
@@ -266,8 +303,8 @@ function ServerInfoSlide({ lang }) {
           </div>
         </div>
         <div className="card">
-          <h3><span className="pip"></span>{lang==='jp'?'運営からのおしらせ':'Operational notes'}</h3>
-          <ul>{c.notes[lang].map((p,i) => <li key={i}>{p}</li>)}</ul>
+          <h3><span className="pip"></span>{pick(w.title, lang)}</h3>
+          {w.body[lang].map((p,i) => <p key={i}>{p}</p>)}
         </div>
         <div className="callout">
           <span className="ico">i</span>
@@ -526,7 +563,7 @@ function NewsArchiveView({ lang, page, onBack }) {
   );
 }
 
-function OutroSlide({ lang }) {
+function OutroSlide({ lang, onOpenTerms }) {
   return (
     <section className="slide foot-slide" id="outro" data-screen-label="09 Outro">
       <div className="foot-brand">
@@ -544,6 +581,9 @@ function OutroSlide({ lang }) {
           </svg>
           {lang==='jp'?'Discord に参加':'Join Discord'}
         </a>
+        <button type="button" className="terms-link" onClick={onOpenTerms}>
+          {pick(CONTENT.terms.link, lang)}
+        </button>
         <span style={{opacity:.5}}>·</span>
         <span>© {new Date().getFullYear()} SORAYU.ME</span>
       </div>
@@ -551,10 +591,46 @@ function OutroSlide({ lang }) {
   );
 }
 
+function TermsModal({ onClose }) {
+  const t = CONTENT.terms;
+  useEffect(() => {
+    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [onClose]);
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} role="dialog" aria-modal="true" aria-label={t.title.jp}>
+      <div className="modal" onClick={(e) => e.stopPropagation()}>
+        <header className="modal-head">
+          <h2>{t.title.jp}</h2>
+          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">×</button>
+        </header>
+        <div className="modal-body">
+          {t.intro.map((p, i) => <p key={`intro-${i}`}>{p}</p>)}
+          {t.sections.map((s, i) => (
+            <section key={i} className="terms-section">
+              <h3>{s.h}</h3>
+              {s.lead && <p>{s.lead}</p>}
+              <ol>
+                {s.body.map((b, j) => <li key={j}>{b}</li>)}
+              </ol>
+            </section>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── App ─────────────────────────────────────────────────────────
 const SLIDES = [
   { id:'hero',    navKey:null,       Comp:HeroSlide,      lab:{jp:'トップ', en:'Home'} },
-  { id:'welcome', navKey:'welcome',  Comp:WelcomeSlide,   lab:{jp:'はじめに', en:'Welcome'} },
   { id:'info',    navKey:'info',     Comp:ServerInfoSlide,lab:{jp:'サーバー情報', en:'Server'} },
   { id:'rules',   navKey:'rules',    Comp:RulesSlide,     lab:{jp:'ルール', en:'Rules'} },
   { id:'faq',     navKey:'faq',      Comp:FAQSlide,       lab:{jp:'FAQ', en:'FAQ'} },
@@ -585,6 +661,7 @@ function App() {
   const [lang, setLang] = useLocalState('sorayu-lang', 'jp');
   const [slideIdx, setSlideIdx] = useState(0);
   const [view, setView] = useState(() => parseHash(window.location.hash));
+  const [termsOpen, setTermsOpen] = useState(false);
   const deckRef = useRef(null);
   const slideIdxRef = useRef(0);
   const snapTimerRef = useRef(0);
@@ -759,7 +836,7 @@ function App() {
       {isDeck ? (
         <div className="deck" ref={deckRef}>
           {SLIDES.map((s, i) => (
-            <s.Comp key={s.id} lang={lang} onNext={() => goTo(i+1)} />
+            <s.Comp key={s.id} lang={lang} onNext={() => goTo(i+1)} onOpenTerms={() => setTermsOpen(true)} />
           ))}
         </div>
       ) : view.kind === 'news-detail' ? (
@@ -791,6 +868,8 @@ function App() {
           </div>
         </>
       )}
+
+      {termsOpen && <TermsModal onClose={() => setTermsOpen(false)} />}
     </>
   );
 }

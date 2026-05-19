@@ -1,0 +1,28 @@
+# SORAYU.ME Wipe Schedule (JST)
+# Format: YYYY-MMDD-HH:MM (one entry per line)
+# Lines starting with `#` and empty lines are ignored.
+# Add future wipes in chronological order. The site picks the next upcoming entry.
+
+2026-0520-12:00
+2026-0527-12:00
+#force
+2026-0605-12:00
+2026-0610-12:00
+2026-0617-12:00
+2026-0624-12:00
+#force
+2026-0703-12:00
+2026-0708-12:00
+2026-0715-12:00
+2026-0722-12:00
+2026-0729-12:00
+#force
+2026-0807-12:00
+#force
+2026-0904-12:00
+#force
+2026-1002-12:00
+#force
+2026-1106-12:00
+#force
+2026-1204-12:00

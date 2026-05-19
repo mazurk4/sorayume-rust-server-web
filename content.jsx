@@ -7,7 +7,6 @@ const T = ({ jp, en, lang }) => (lang === 'en' ? en : jp);
 // ─── Content (bilingual) ──────────────────────────────────────────
 const CONTENT = {
   nav: {
-    welcome: { jp: 'ようこそ', en: 'Welcome' },
     info:    { jp: 'サーバー情報', en: 'Server' },
     rules:   { jp: 'ルール', en: 'Rules' },
     faq:     { jp: 'FAQ', en: 'FAQ' },
@@ -50,28 +49,12 @@ const CONTENT = {
     },
     items: [
       { k:{jp:'チーム上限', en:'Team limit'},        v:'3 (Solo / Duo / Trio)' },
-      { k:{jp:'チーミング', en:'Teaming / Alliance'}, v:{jp:'禁止', en:'Not allowed'} },
       { k:{jp:'マップサイズ', en:'Map size'},        v:'3800' },
       { k:{jp:'マップ / BP ワイプ', en:'Map / BP wipe'}, v:{jp:'毎週水曜 12:00 JST', en:'Wed 12:00 JST'} },
       { k:{jp:'デイリーリスタート', en:'Daily restart'}, v:'05:30 JST' },
-      { k:{jp:'グループ上限 (TC)', en:'Group limit (TC)'}, v:'2' },
       { k:{jp:'前哨基地統合', en:'Bandit Camp'}, v:{jp:'Outpost に統合', en:'Merged into Outpost'} },
       { k:{jp:'洞窟生成', en:'Cave generation'}, v:{jp:'バンカー強度を調整', en:'Bunker spawns tuned'} },
     ],
-    notes: {
-      jp: [
-        'チーター報告・グリッチ報告以外への即時対応は行っておりません。',
-        '管理者・モデレーターは基本サーバーでプレイしません。プラグインや新要素の動作確認のためテストプレイを行うことがありますが、Killやレイドは行いません。',
-        '管理者・モデレーターのプレイヤー名と SteamID は非公開です。',
-        'モデレーターは少数精鋭のため、即時対応ができない場合があります。',
-      ],
-      en: [
-        'We can only act in real time on cheater / glitch reports.',
-        'Admins and moderators do not normally play on the server. They may run test sessions to verify plugins or new in-game items — they will never kill players or raid bases.',
-        'Admin / moderator player names and SteamIDs are kept private.',
-        'Our moderator team is small, so response time may vary.',
-      ],
-    },
   },
   rules: [
     {
@@ -83,8 +66,8 @@ const CONTENT = {
       d: { jp:'別チームとの協力・同盟・物資の共有は行わないでください。', en:'Cooperating, allying, or sharing supplies with players outside your team is not allowed.' },
     },
     {
-      t: { jp:'グループ上限 (TC) は 2', en:'TC group limit: 2' },
-      d: { jp:'TC に登録できるのは 2 人まで。3 人目以降は自動で kick されます。', en:'Only two players can authorize on a TC. A third or more will be auto-kicked.' },
+      t: { jp:'グループ上限 (TC) は 3', en:'TC group limit: 3' },
+      d: { jp:'TC に登録できるのは 3 人まで。4 人目以降は自動で kick されます。', en:'Only three players can authorize on a TC. A fourth or more will be auto-kicked.' },
     },
     {
       t: { jp:'チート・グリッチ禁止', en:'No cheating or glitching' },
@@ -123,6 +106,13 @@ const CONTENT = {
       },
     },
     {
+      q: { jp:'管理者はサーバーでプレイするの？', en:'Do admins play on the server?' },
+      a: {
+        jp:['管理者・モデレーターは基本サーバーでプレイしません。','プラグインや新要素の動作確認のためテストプレイを行うことがありますが、Kill やレイドは行いません。'],
+        en:['Admins and moderators do not normally play on the server.','They may run test sessions to verify plugins or new in-game items — but they will never kill players or raid bases.'],
+      },
+    },
+    {
       q: { jp:'チート / グリッチ / チーミングを見つけました', en:'I found cheating / glitching / teaming' },
       a: {
         jp:['ゲーム内 F7 から報告をお願いします。','レポートはリアルタイムでモデレーターに通知されます。スクリーンショットや動画記録がある場合は #claim-ticket からあわせて報告してください。'],
@@ -146,8 +136,8 @@ const CONTENT = {
     {
       q: { jp:'TC を触ったら kick されました', en:'I got kicked when I touched a TC' },
       a: {
-        jp:['本サーバーのグループ上限は 2 人です。','3 人目以降のユーザーが TC に登録しようとすると自動で kick されます。'],
-        en:['The TC group limit on this server is 2.','A third or later player attempting to authorize on the TC will be auto-kicked.'],
+        jp:['本サーバーのグループ上限は 3 人です。','4 人目以降のユーザーが TC に登録しようとすると自動で kick されます。'],
+        en:['The TC group limit on this server is 3.','A fourth or later player attempting to authorize on the TC will be auto-kicked.'],
       },
     },
   ],
@@ -281,6 +271,97 @@ const CONTENT = {
       },
     },
   ],
+  terms: {
+    title: { jp:'利用規約', en:'Terms of service' },
+    link:  { jp:'利用規約', en:'Terms of service' },
+    intro: [
+      '本利用規約（以下「本規約」といいます）は、本Rustサーバー（以下「本サーバー」）の利用条件を定めるものです。本規約をお読みいただき、内容に同意いただけない場合は、Discordサーバーからの退出をお願いしております。',
+      '規約に同意した方に限り、本サーバーにおけるサービス提供を受けられるものとします。',
+      'また、未成年者は、法定代理人（親権者等）の同意を得た上で本サーバーをご利用ください。未成年者が本規約に同意し、利用登録を行った場合には、法定代理人の同意があったものとみなします。',
+      'Rust サーバーへの接続を行った時点で、別途Rust公式が定める利用規約にも同意したものとみなします。',
+    ],
+    sections: [
+      {
+        h: '第1条（適用範囲）',
+        body: [
+          '本規約は、本サーバーの利用に関する一切の関係に適用されるものとします。',
+          '利用者は、本サーバーを利用することで本規約に同意したものとみなされます。',
+        ],
+      },
+      {
+        h: '第2条（利用環境）',
+        body: [
+          '利用者は、Rust本体、Steam、ネットワーク環境等、接続に必要な設備を自己の責任で準備するものとします。',
+          '利用者の環境に起因する接続不良、不具合について、運営は責任を負いません。',
+        ],
+      },
+      {
+        h: '第3条（禁止行為）',
+        lead: '利用者は、本サーバーの利用にあたり、以下の行為を行ってはなりません。',
+        body: [
+          'チート行為、およびその疑いを招く行為（Aim/ESP、Macro、スクリプト、外部ツール、改造クライアント等）',
+          'ゲーム仕様の不具合を利用するグリッチ行為',
+          'サーバー設定やゲームバランスの意図的な回避・悪用',
+          '他プレイヤーへの迷惑行為・嫌がらせ行為・暴言・差別的表現',
+          '運営やスタッフ、他プレイヤーへの誹謗中傷・妨害',
+          '不正アクセス、DoS攻撃、サーバー負荷を意図的に増大させる行為',
+          '宣伝・スパム・荒らし行為',
+          'その他、運営が不適切と判断する行為',
+        ],
+      },
+      {
+        h: '第4条（処分・BANについて）',
+        body: [
+          '利用者が本規約に違反した場合、運営は予告なく、一時的な利用停止・永久BAN・Discordからの退会等の措置を取ることがあります。',
+          'BAN理由の詳細公開・説明対応は行わない場合があります。',
+          'BANの解除を保証するものではありません。',
+        ],
+      },
+      {
+        h: '第5条（サーバー仕様とデータについて）',
+        body: [
+          '本サーバーは、定期的にワイプを行う特性があります。建築物・インベントリ・ブループリント等、サーバーデータは削除される場合があります。',
+          'サーバーダウン・ロールバック・データ消失等が発生する可能性があります。運営はこれらについて一切責任を負いません。',
+          'サーバー設定（マップ、プラグイン、制限事項等）は、運営の判断により予告なく変更される場合があります。',
+        ],
+      },
+      {
+        h: '第6条（運営の権限）',
+        body: [
+          '運営は、サーバーの停止・再起動・仕様変更、プレイヤーの行動ログの確認、必要な場合の管理措置（BAN・調整等）を自由に行う権利を有します。',
+          '運営はボランティアであり、即時対応はできません。',
+        ],
+      },
+      {
+        h: '第7条（免責事項）',
+        body: [
+          '本サーバーの利用により発生したプレイヤー間トラブル、データ消失、ワイプの影響、ゲームクライアントやSteamの不具合、サーバー障害やネットワークトラブル、損害・損失・不利益の一切について、運営は責任を負いません。',
+          'あくまで「個人が趣味として提供するサーバー」である点をご理解ください。',
+        ],
+      },
+      {
+        h: '第8条（サポートについて）',
+        body: [
+          '対応可能なのは原則としてチート報告・グリッチ報告のみとします。',
+          '問い合わせは Discord 内のチケットシステムからのみ受け付けます。',
+          '回答が遅れる場合があります。即時対応は保証できません。',
+        ],
+      },
+      {
+        h: '第9条（規約の変更）',
+        body: [
+          '本規約は、運営の判断により内容を変更・追記できるものとします。',
+          '変更後の規約は、DiscordまたはWebで告知し、告知後に利用を継続した場合は変更に同意したものとみなします。',
+        ],
+      },
+      {
+        h: '第10条（準拠法）',
+        body: [
+          '本規約は、日本法に準拠し解釈されるものとします。',
+        ],
+      },
+    ],
+  },
 };
 
 window.CONTENT = CONTENT;
