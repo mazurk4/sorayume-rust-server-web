@@ -1,0 +1,555 @@
+/* global React, ReactDOM, CONTENT */
+const { useState, useEffect, useMemo, useRef, useCallback } = React;
+
+// ─── localStorage-backed state ────────────────────────────────────
+function useLocalState(key, defaultVal) {
+  const [val, setVal] = useState(() => {
+    try {
+      const s = localStorage.getItem(key);
+      return s !== null ? JSON.parse(s) : defaultVal;
+    } catch { return defaultVal; }
+  });
+  const set = useCallback((v) => {
+    setVal(v);
+    try { localStorage.setItem(key, JSON.stringify(v)); } catch {}
+  }, [key]);
+  return [val, set];
+}
+
+// ─── Starfield (seeded random so stars don't jump on re-render) ──
+function makeStars(n, seed=1){
+  const rand = (() => { let s = seed; return () => (s = (s*9301 + 49297) % 233280) / 233280; })();
+  const arr = [];
+  for (let i=0;i<n;i++){
+    const big = rand() < 0.08;
+    const gold = rand() < 0.18;
+    arr.push({
+      top: rand()*100,
+      left: rand()*100,
+      size: big ? 2.5 + rand()*1.5 : 1 + rand()*1.2,
+      tw: 2 + rand()*4,
+      d: rand()*-6,
+      gold, blue: !gold && rand() < 0.3,
+    });
+  }
+  return arr;
+}
+const STARS = makeStars(160, 7);
+
+function Starfield(){
+  return (
+    <>
+      <div className="sky" aria-hidden="true"></div>
+      <div className="stars-layer" aria-hidden="true">
+        {STARS.map((s,i) => (
+          <div key={i}
+            className={`star ${s.gold?'gold':''} ${s.blue?'blue':''}`}
+            style={{
+              top:`${s.top}%`, left:`${s.left}%`,
+              width:`${s.size}px`, height:`${s.size}px`,
+              '--tw':`${s.tw}s`, '--d':`${s.d}s`,
+            }}
+          />
+        ))}
+        <div className="shoot"></div>
+        <div className="shoot s2"></div>
+        <div className="shoot s3"></div>
+      </div>
+    </>
+  );
+}
+
+// ─── Wipe countdown ──────────────────────────────────────────────
+function useNextWipe() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const next = useMemo(() => {
+    const d = new Date();
+    const utcDay = d.getUTCDay();
+    const utcHr  = d.getUTCHours();
+    const utcMin = d.getUTCMinutes();
+    let daysAhead = (3 - utcDay + 7) % 7;
+    const isPastToday = utcHr > 3 || (utcHr === 3 && utcMin >= 0);
+    if (daysAhead === 0 && isPastToday) daysAhead = 7;
+    return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + daysAhead, 3, 0, 0));
+  }, [Math.floor(now.getTime()/60000)]);
+
+  const diff = Math.max(0, next - now);
+  const days = Math.floor(diff / 86400000);
+  const hrs  = Math.floor((diff % 86400000) / 3600000);
+  const mins = Math.floor((diff % 3600000) / 60000);
+  const secs = Math.floor((diff % 60000) / 1000);
+  return { days, hrs, mins, secs };
+}
+
+function pick(v, lang){
+  if (v == null) return '';
+  if (typeof v === 'string') return v;
+  return v[lang] || v.jp || '';
+}
+
+// ─── Slide chrome ────────────────────────────────────────────────
+function SlideHead({ num, title, sub }) {
+  return (
+    <div>
+      <div className="slide-num">{num}</div>
+      <h2 className="slide-title"><span className="spark"></span>{title}</h2>
+      {sub && <div className="slide-sub">{sub}</div>}
+    </div>
+  );
+}
+
+// ─── Nav ─────────────────────────────────────────────────────────
+function Nav({ lang, setLang, dark, onToggleDark, slideIdx, slides, goTo }) {
+  return (
+    <nav className="nav">
+      <div className="nav-inner">
+        <a className="nav-brand" href="#" onClick={(e)=>{e.preventDefault(); goTo(0);}}>
+          <img src="assets/icon.png" alt="" />
+          <div>
+            <div className="b1">SORAYU.ME</div>
+            <div className="b2">RUST SERVER</div>
+          </div>
+        </a>
+        <div className="nav-links">
+          {slides.map((s, i) => !s.navKey ? null : (
+            <a key={s.id}
+               className={`nav-link ${slideIdx === i ? 'active' : ''}`}
+               href={`#${s.id}`}
+               onClick={(e)=>{e.preventDefault(); goTo(i);}}>
+              {pick(CONTENT.nav[s.navKey] || {jp:s.id, en:s.id}, lang)}
+            </a>
+          ))}
+        </div>
+        <div className="nav-controls">
+          <button
+            className="nav-theme-btn"
+            onClick={onToggleDark}
+            aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {dark ? (
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/>
+              </svg>
+            )}
+          </button>
+          <div className="nav-lang" role="tablist" aria-label="language">
+            <button className={lang==='jp'?'on':''} onClick={()=>setLang('jp')}>JP</button>
+            <button className={lang==='en'?'on':''} onClick={()=>setLang('en')}>EN</button>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+// ─── Quick info ──────────────────────────────────────────────────
+function CopyButton({ text, lang }) {
+  const [ok, setOk] = useState(false);
+  return (
+    <button className={`copy-btn ${ok?'ok':''}`} onClick={async ()=>{
+      try { await navigator.clipboard.writeText(text); setOk(true); setTimeout(()=>setOk(false), 1600); } catch(e){}
+    }}>
+      {ok ? pick(CONTENT.quick.copied, lang) : pick(CONTENT.quick.copy, lang)}
+    </button>
+  );
+}
+
+function QuickInfo({ lang }) {
+  const { days, hrs, mins, secs } = useNextWipe();
+  const connect = 'client.connect rust-game.sorayu.me:28015';
+  return (
+    <div className="quick">
+      <div className="qcard">
+        <div className="qlabel">{pick(CONTENT.quick.connect, lang)}</div>
+        <div className="connect-line">
+          <code>{connect}</code>
+          <CopyButton text={connect} lang={lang} />
+        </div>
+        <div style={{fontSize:11.5, color:'var(--ink-muted)'}}>
+          {lang==='jp' ? 'F1 コンソールに貼り付けてください' : 'Paste this into the F1 console'}
+        </div>
+      </div>
+      <div className="qcard">
+        <div className="qlabel">{pick(CONTENT.quick.nextWipe, lang)}</div>
+        <div className="countdown">
+          <span className="num">{days}</span><span className="lbl">{lang==='jp'?'日':'d'}</span>
+          <span className="num" style={{marginLeft:6}}>{String(hrs).padStart(2,'0')}</span><span className="lbl">{lang==='jp'?'時':'h'}</span>
+          <span className="num" style={{marginLeft:6}}>{String(mins).padStart(2,'0')}</span><span className="lbl">{lang==='jp'?'分':'m'}</span>
+          <span className="num" style={{marginLeft:6,fontSize:18,opacity:.7}}>{String(secs).padStart(2,'0')}</span>
+        </div>
+        <div className="countdown-when">{pick(CONTENT.quick.wipeNote, lang)}</div>
+      </div>
+      <div className="qcard">
+        <div className="qlabel">{pick(CONTENT.quick.discord, lang)}</div>
+        <a className="discord-btn" href="https://discord.gg/dxxPQQxJfQ" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M20.317 4.369A19.79 19.79 0 0 0 16.558 3a.07.07 0 0 0-.073.035c-.211.375-.444.864-.608 1.249a18.27 18.27 0 0 0-5.49 0c-.164-.394-.405-.874-.617-1.249A.077.077 0 0 0 9.697 3a19.736 19.736 0 0 0-3.76 1.369.07.07 0 0 0-.032.027C2.343 9.045 1.39 13.58 1.858 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.873-1.295 1.226-1.994a.076.076 0 0 0-.042-.106 13.12 13.12 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.292a.074.074 0 0 1 .078-.01c3.927 1.793 8.18 1.793 12.061 0a.073.073 0 0 1 .079.009c.12.099.246.198.373.293a.077.077 0 0 1-.006.127c-.598.349-1.22.645-1.873.891a.077.077 0 0 0-.041.107c.36.698.772 1.363 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.956 2.42-2.157 2.42zm7.974 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.42-2.157 2.42z"/>
+          </svg>
+          {pick(CONTENT.quick.joinNow, lang)}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// ─── Slide contents ──────────────────────────────────────────────
+function HeroSlide({ lang, onNext }) {
+  return (
+    <section className="slide hero-slide" id="hero" data-screen-label="01 Hero">
+      <div className="hero-frame">
+        <img src="assets/banner.png" alt="SORAYU.ME Rust Server" />
+        <div className="hero-overlay">
+          <span className="hero-tag">
+            <span className="dot"></span>
+            {pick(CONTENT.hero.status, lang)} · {pick(CONTENT.hero.tag, lang)}
+          </span>
+          <div className="hero-cta">
+            <a className="scroll-cue" onClick={(e)=>{e.preventDefault(); onNext();}} href="#">
+              {lang==='jp' ? 'スクロールしてはじめる ↓' : 'Scroll to begin ↓'}
+            </a>
+          </div>
+        </div>
+      </div>
+      <QuickInfo lang={lang} />
+    </section>
+  );
+}
+
+function WelcomeSlide({ lang }) {
+  const c = CONTENT.welcome;
+  return (
+    <section className="slide" id="welcome" data-screen-label="02 Welcome">
+      <div className="slide-inner">
+        <SlideHead num="00 — Welcome" title={lang==='jp'?'はじめに':'Introduction'} sub={lang==='jp'?'ようこそ':'Welcome'} />
+        <div className="card">
+          <h3><span className="pip"></span>{pick(c.title, lang)}</h3>
+          {c.body[lang].map((p,i) => <p key={i}>{p}</p>)}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ServerInfoSlide({ lang }) {
+  const c = CONTENT.settings;
+  return (
+    <section className="slide" id="info" data-screen-label="03 Server info">
+      <div className="slide-inner">
+        <SlideHead num="01 — Server" title={lang==='jp'?'サーバー情報':'Server information'} sub="Settings & operations" />
+        <div className="card">
+          <h3><span className="pip"></span>{lang==='jp'?'設定':'Settings'}</h3>
+          <p style={{marginBottom:4}}>{pick(c.intro, lang)}</p>
+          <div className="settings-grid">
+            {c.items.map((it, i) => (
+              <div className="setting" key={i}>
+                <span className="k">{pick(it.k, lang)}</span>
+                <span className="v">{pick(it.v, lang)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="card">
+          <h3><span className="pip"></span>{lang==='jp'?'運営からのおしらせ':'Operational notes'}</h3>
+          <ul>{c.notes[lang].map((p,i) => <li key={i}>{p}</li>)}</ul>
+        </div>
+        <div className="callout">
+          <span className="ico">i</span>
+          <div>
+            {lang==='jp'
+              ? <span>サポート・チート報告は Discord 内のお問い合わせチャンネルから <b>#claim-ticket</b> を発行してください。</span>
+              : <span>For support or cheater reports, open a ticket in <b>#claim-ticket</b> on Discord.</span>}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RulesSlide({ lang }) {
+  return (
+    <section className="slide" id="rules" data-screen-label="04 Rules">
+      <div className="slide-inner">
+        <SlideHead num="02 — Rules" title={lang==='jp'?'サーバールール':'Server rules'} sub={lang==='jp'?'プレイの基本':'Core rules'} />
+        <div className="card">
+          <div className="rules">
+            {CONTENT.rules.map((r, i) => (
+              <div className="rule" key={i}>
+                <div className="rn">{String(i+1).padStart(2,'0')}</div>
+                <div>
+                  <div className="rt">{pick(r.t, lang)}</div>
+                  <div className="rd">{pick(r.d, lang)}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FAQSlide({ lang }) {
+  return (
+    <section className="slide" id="faq" data-screen-label="05 FAQ">
+      <div className="slide-inner">
+        <SlideHead num="03 — FAQ" title="FAQ" sub={lang==='jp'?'よくある質問':'Frequently asked'} />
+        <div className="faq">
+          {CONTENT.faq.map((item, i) => (
+            <details key={i} {...(i===0 ? {open:true} : {})}>
+              <summary>
+                <span className="q">Q{String(i+1).padStart(2,'0')}</span>
+                <span>{pick(item.q, lang)}</span>
+                <span className="chev">›</span>
+              </summary>
+              <div className="a-body">
+                {item.a[lang].map((p, idx) => <p key={idx}>{p}</p>)}
+              </div>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ModSlide({ lang }) {
+  const c = CONTENT.mod;
+  return (
+    <section className="slide" id="mod" data-screen-label="06 Recruit">
+      <div className="slide-inner">
+        <SlideHead num="04 — Recruit" title={lang==='jp'?'モデレーター募集中':'We\'re recruiting'} sub="Now hiring" />
+        <div className="card">
+          <p>{pick(c.intro, lang)}</p>
+          <div className="mod-grid">
+            {c.roles.map((r, i) => (
+              <div className="mod" key={i}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:6}}>
+                  <span style={{fontFamily:'"Cinzel",serif', fontWeight:700, color:'var(--gold)', fontSize:13}}>{r.n}</span>
+                  {r.badge && <span className="badge">{pick(r.badge, lang)}</span>}
+                </div>
+                <h4>{pick(r.title, lang)}</h4>
+                <div className="req">{lang==='jp'?'必須':'Required'}</div>
+                <ul>{r.must[lang].map((m,j)=><li key={j}>{m}</li>)}</ul>
+                <div className="req">{lang==='jp'?'歓迎':'Nice to have'}</div>
+                <ul>{r.want[lang].map((m,j)=><li key={j}>{m}</li>)}</ul>
+                {r.note && <div className="note">※ {pick(r.note, lang)}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StreamSlide({ lang }) {
+  const c = CONTENT.stream;
+  return (
+    <section className="slide" id="stream" data-screen-label="07 Streaming">
+      <div className="slide-inner">
+        <SlideHead num="05 — Streaming" title={pick(c.title, lang)} sub="Stream policy" />
+        <div className="card">
+          <h3><span className="pip"></span>{lang==='jp'?'配信許可について':'Streaming permission'}</h3>
+          {c.body[lang].map((p,i)=><p key={i}>{p}</p>)}
+          <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
+            {c.links.map((l, i) => (
+              <a key={i} href={l.url} target="_blank" rel="noreferrer"
+                 style={{fontSize:12, padding:'5px 10px', background:'var(--bg-2)', borderRadius:6, border:'1px solid var(--line)'}}>
+                {l.label} ↗
+              </a>
+            ))}
+          </div>
+        </div>
+        <div className="card">
+          <h3><span className="pip"></span>{lang==='jp'?'注意点':'Notes'}</h3>
+          <ul>{c.notes[lang].map((p,i)=><li key={i}>{p}</li>)}</ul>
+        </div>
+        <div className="card">
+          <h3><span className="pip"></span>{pick(c.event.title, lang)}</h3>
+          <p>{pick(c.event.body, lang)}</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function NewsSlide({ lang }) {
+  return (
+    <section className="slide" id="news" data-screen-label="08 News">
+      <div className="slide-inner">
+        <SlideHead num="06 — News" title={lang==='jp'?'おしらせ':'News'} sub="Updates" />
+        <div className="card">
+          {CONTENT.news.map((n, i) => (
+            <div className="news-item" key={i}>
+              <div className="news-date">{n.date}</div>
+              <div className="news-body">
+                <div className="nt">{pick(n.title, lang)}</div>
+                <div className="nd">{pick(n.body, lang)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function OutroSlide({ lang }) {
+  return (
+    <section className="slide foot-slide" id="outro" data-screen-label="09 Outro">
+      <div className="foot-brand">
+        <img src="assets/icon.png" alt="" />
+        <div>
+          <div><b>SORAYU.ME</b></div>
+          <div style={{fontFamily:'"Cinzel",serif',letterSpacing:'.16em',fontSize:11,color:'var(--brown)',marginTop:4}}>RUST SERVER</div>
+          <div className="foot-meta">{lang==='jp'?'see you under the stars.':'see you under the stars.'}</div>
+        </div>
+      </div>
+      <div className="foot-links">
+        <a className="discord-btn" href="https://discord.gg/dxxPQQxJfQ" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" style={{width:16,height:16}}>
+            <path d="M20.317 4.369A19.79 19.79 0 0 0 16.558 3a.07.07 0 0 0-.073.035c-.211.375-.444.864-.608 1.249a18.27 18.27 0 0 0-5.49 0c-.164-.394-.405-.874-.617-1.249A.077.077 0 0 0 9.697 3a19.736 19.736 0 0 0-3.76 1.369.07.07 0 0 0-.032.027C2.343 9.045 1.39 13.58 1.858 18.057a.082.082 0 0 0 .031.056 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.873-1.295 1.226-1.994a.076.076 0 0 0-.042-.106 13.12 13.12 0 0 1-1.872-.892.077.077 0 0 1-.008-.128c.126-.094.252-.192.372-.292a.074.074 0 0 1 .078-.01c3.927 1.793 8.18 1.793 12.061 0a.073.073 0 0 1 .079.009c.12.099.246.198.373.293a.077.077 0 0 1-.006.127c-.598.349-1.22.645-1.873.891a.077.077 0 0 0-.041.107c.36.698.772 1.363 1.225 1.993a.076.076 0 0 0 .084.028 19.84 19.84 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.331c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.956 2.42-2.157 2.42zm7.974 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.418 2.157-2.418 1.21 0 2.176 1.094 2.157 2.418 0 1.334-.946 2.42-2.157 2.42z"/>
+          </svg>
+          {lang==='jp'?'Discord に参加':'Join Discord'}
+        </a>
+        <span style={{opacity:.5}}>·</span>
+        <span>© {new Date().getFullYear()} SORAYU.ME</span>
+      </div>
+    </section>
+  );
+}
+
+// ─── App ─────────────────────────────────────────────────────────
+const SLIDES = [
+  { id:'hero',    navKey:null,       Comp:HeroSlide,      lab:{jp:'トップ', en:'Home'} },
+  { id:'welcome', navKey:'welcome',  Comp:WelcomeSlide,   lab:{jp:'はじめに', en:'Welcome'} },
+  { id:'info',    navKey:'info',     Comp:ServerInfoSlide,lab:{jp:'サーバー情報', en:'Server'} },
+  { id:'rules',   navKey:'rules',    Comp:RulesSlide,     lab:{jp:'ルール', en:'Rules'} },
+  { id:'faq',     navKey:'faq',      Comp:FAQSlide,       lab:{jp:'FAQ', en:'FAQ'} },
+  { id:'mod',     navKey:'mod',      Comp:ModSlide,       lab:{jp:'募集', en:'Recruit'} },
+  { id:'stream',  navKey:'stream',   Comp:StreamSlide,    lab:{jp:'配信', en:'Streaming'} },
+  { id:'news',    navKey:'news',     Comp:NewsSlide,      lab:{jp:'おしらせ', en:'News'} },
+  { id:'outro',   navKey:null,       Comp:OutroSlide,     lab:{jp:'End', en:'End'} },
+];
+
+function App() {
+  const [dark, setDark] = useLocalState('sorayu-dark', true);
+  const [lang, setLang] = useLocalState('sorayu-lang', 'jp');
+  const [slideIdx, setSlideIdx] = useState(0);
+  const deckRef = useRef(null);
+
+  useEffect(() => { document.documentElement.classList.toggle('dark', dark); }, [dark]);
+
+  const onToggleDark = () => setDark(!dark);
+  const onSetLang = (l) => setLang(l);
+
+  // Scroll handling — document scroll
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const slides = document.querySelectorAll('.slide');
+        const probe = window.scrollY + 16;
+        let best = 0;
+        for (let i = 0; i < slides.length; i++) {
+          if (slides[i].offsetTop <= probe) best = i;
+        }
+        setSlideIdx(best);
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive:true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const goTo = useCallback((i) => {
+    const slides = document.querySelectorAll('.slide');
+    const clamped = Math.max(0, Math.min(slides.length-1, i));
+    const target = slides[clamped];
+    if (target) window.scrollTo({ top: target.offsetTop, behavior:'smooth' });
+  }, []);
+
+  // Keyboard nav
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+      if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') { e.preventDefault(); goTo(slideIdx+1); }
+      else if (e.key === 'ArrowUp' || e.key === 'PageUp') { e.preventDefault(); goTo(slideIdx-1); }
+      else if (e.key === 'Home') { e.preventDefault(); goTo(0); }
+      else if (e.key === 'End')  { e.preventDefault(); goTo(SLIDES.length-1); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [slideIdx, goTo]);
+
+  // Hash sync
+  useEffect(() => {
+    const id = SLIDES[slideIdx]?.id;
+    if (id && window.location.hash.slice(1) !== id) {
+      history.replaceState(null, '', `#${id}`);
+    }
+  }, [slideIdx]);
+
+  // Initial hash → slide
+  useEffect(() => {
+    const h = window.location.hash.slice(1);
+    if (!h) return;
+    const idx = SLIDES.findIndex(s => s.id === h);
+    if (idx > 0) setTimeout(() => goTo(idx), 50);
+  }, [goTo]);
+
+  const progress = SLIDES.length > 1 ? (slideIdx / (SLIDES.length-1)) * 100 : 0;
+
+  return (
+    <>
+      <Starfield />
+      <Nav lang={lang} setLang={onSetLang} dark={dark} onToggleDark={onToggleDark} slideIdx={slideIdx} slides={SLIDES} goTo={goTo} />
+      <div className="deck-progress"><div className="bar" style={{width:`${progress}%`}}></div></div>
+
+      <div className="deck" ref={deckRef}>
+        {SLIDES.map((s, i) => (
+          <s.Comp key={s.id} lang={lang} onNext={() => goTo(i+1)} />
+        ))}
+      </div>
+
+      {/* Right rail dots */}
+      <div className="deck-dots" aria-hidden="true">
+        {SLIDES.map((s, i) => (
+          <button key={s.id} className={`d ${slideIdx===i?'on':''}`} onClick={()=>goTo(i)} aria-label={pick(s.lab, lang)}>
+            <span className="lab">{pick(s.lab, lang)}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Counter + arrows */}
+      <div className="deck-counter">
+        <b>{String(slideIdx+1).padStart(2,'0')}</b>
+        <span style={{margin:'0 6px',opacity:.4}}>/</span>
+        {String(SLIDES.length).padStart(2,'0')}
+      </div>
+      <div className="deck-arrows">
+        <button onClick={()=>goTo(slideIdx-1)} disabled={slideIdx===0} aria-label="prev">↑</button>
+        <button onClick={()=>goTo(slideIdx+1)} disabled={slideIdx===SLIDES.length-1} aria-label="next">↓</button>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
